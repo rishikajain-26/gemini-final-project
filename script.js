@@ -3,11 +3,13 @@ const promptForm = document.querySelector(".prompt-form");
 const promptInput = promptForm.querySelector(".prompt-input");
 
 let userMessage = "";
-// Chat history array to store conversation
+
+// Chat history array
 const chatHistory = [];
 
-// const apikey="your_apikey_here";
-// const API_URL=  add api url
+// API placeholders (not used right now)
+// const apikey = "your_api_key_here";
+// const API_URL = "your_api_url_here";
 
 
 // Function to create message elements
@@ -18,8 +20,19 @@ const createMsgElement = (content, ...classes) => {
     return div;
 };
 
+
+// ✅ GENERATE RESPONSE FUNCTION
 const generateResponse = async (botMsgDiv) => {
     const textElement = botMsgDiv.querySelector(".message-text");
+
+    // ✅ NO API CASE — KEEP UI WORKING
+    if (typeof API_URL === "undefined") {
+        setTimeout(() => {
+            textElement.textContent = "Just a sec...";
+            botMsgDiv.classList.remove("loading");
+        }, 600);
+        return;
+    }
 
     // Add user message to chat history
     chatHistory.push({
@@ -31,23 +44,20 @@ const generateResponse = async (botMsgDiv) => {
         const response = await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: chatHistory
-            })
+            body: JSON.stringify({ contents: chatHistory })
         });
 
         const data = await response.json();
         if (!response.ok) throw new Error(data.error.message);
 
         const responseText =
-            data?.candidates?.[0]?.content?.parts?.[0]?.text
-                ?.replace(/\\([^]+)\\*/g, "$1")
-                ?.trim() || "No response";
+            data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+            "No response";
 
         textElement.textContent = responseText;
         botMsgDiv.classList.remove("loading");
 
-        // ADD MODEL RESPONSE TO CHAT HISTORY
+        // Add model response to chat history
         chatHistory.push({
             role: "model",
             parts: [{ text: responseText }]
@@ -61,32 +71,38 @@ const generateResponse = async (botMsgDiv) => {
 };
 
 
-// Handle the form submission
+// ✅ HANDLE FORM SUBMIT
 const handleFormSubmit = (e) => {
     e.preventDefault();
+
     userMessage = promptInput.value.trim();
     if (!userMessage) return;
 
-    promptInput.value="";
+    promptInput.value = "";
 
-    // Generate user message HTML and add in the chats container
+    // User message
     const userMsgHTML = `<p class="message-text"></p>`;
     const userMsgDiv = createMsgElement(userMsgHTML, "user-message");
-
     userMsgDiv.querySelector(".message-text").textContent = userMessage;
     chatsContainer.appendChild(userMsgDiv);
 
+    // Bot message
     setTimeout(() => {
-    const botMsgHTML = `<img src="gemini-chatbot-logo.svg" class="avatar"><p class="message-text">Just a sec...</p>`;
-    const botMsgDiv = createMsgElement(botMsgHTML, "bot-message", "loading");
-    chatsContainer.appendChild(botMsgDiv);
+        const botMsgHTML = `
+            <img src="gemini-chatbot-logo.svg" class="avatar">
+            <p class="message-text">Just a sec...</p>
+        `;
+        const botMsgDiv = createMsgElement(
+            botMsgHTML,
+            "bot-message",
+            "loading"
+        );
+        chatsContainer.appendChild(botMsgDiv);
 
-    // Call API function here
-    generateResponse(botMsgDiv);
-
-}, 600);
-
-    
+        generateResponse(botMsgDiv);
+    }, 600);
 };
 
+
+// Event listener
 promptForm.addEventListener("submit", handleFormSubmit);
